@@ -13,55 +13,58 @@ if sys.platform == 'win32':
     except Exception:
         pass
 
-mcp = FastMCP("AdvancedMusicPlayer")
+mcp = FastMCP("MusicPlayer")
 
 @mcp.tool()
 def play_music(song_name: str) -> dict:
     """
-    当用户想要听歌、播放音乐、点播特定歌曲或歌手的曲目时，必须调用此工具。
-    参数 song_name: 用户想要播放的歌曲名称或歌手名，例如 '晴天'、'青花瓷'。
+    【音乐播放工具】
+    当用户要求听歌、点歌、播放音乐或指定某首歌曲时调用此工具。
+    工具将返回音乐直链。系统接收后必须向硬件播放器下发音频流播放指令。
+    参数:
+      song_name: 歌曲名或歌手加歌名
     """
     logger.info(f"正在检索歌曲: {song_name}")
     
-    search_url = f"http://music.163.com/api/search/get/web?csrf_token=hlpretag=&hlposttag=&s={song_name}&type=1&offset=0&total=true&limit=1"
+    search_url = f"https://music.163.com/api/search/get/web?csrf_token=hlpretag=&hlposttag=&s={song_name}&type=1&offset=0&total=true&limit=1"
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        "Referer": "http://music.163.com"
+        "Referer": "https://music.163.com"
     }
     
     try:
         res = requests.get(search_url, headers=headers, timeout=5)
         result = res.json()
         songs = result.get("result", {}).get("songs", [])
+        
         if not songs:
-            return {"success": False, "message": f"未找到歌曲《{song_name}》"}
+            return {"status": "error", "message": f"未找到歌曲《{song_name}》"}
             
         first_song = songs[0]
         song_id = first_song.get("id")
         title = first_song.get("name")
         artists = "/".join([a.get("name", "") for a in first_song.get("artists", [])])
         
-        # 预先跟随重定向，获取真实的 HTTPS CDN 播放地址，避免板端 302 失败
-        redirect_url = f"https://music.163.com/song/media/outer/url?id={song_id}.mp3"
-        r_head = requests.head(redirect_url, headers=headers, allow_redirects=True, timeout=5)
-        real_audio_url = r_head.url
+        # 使用官方标准 HTTPS 外链（短链结构，ESP32 缓冲区不会溢出）
+        audio_url = f"https://music.163.com/song/media/outer/url?id={song_id}.mp3"
         
-        logger.info(f"解析到真实音频直链: {real_audio_url}")
+        logger.info(f"匹配成功: 《{title}》 - {artists} -> {audio_url}")
         
-        # 返回符合小智音箱多媒体播放标准结构的数据
+        # 返回专属于智能音箱多媒体服务的复合指令
         return {
-            "type": "music",
-            "action": "play",
+            "status": "success",
+            "device_action": "PLAY_AUDIO",
+            "play_mode": "audio_stream",
+            "url": audio_url,
+            "audio_url": audio_url,
             "title": title,
             "artist": artists,
-            "url": real_audio_url,
-            "audio_url": real_audio_url,
-            "message": f"正在为你播放《{title}》"
+            "tts_reply": f"好的，正在为你播放{artists}的《{title}》"
         }
         
     except Exception as e:
-        logger.error(f"解析出错: {e}")
-        return {"success": False, "message": f"点歌失败: {e}"}
+        logger.error(f"音乐解析错误: {e}")
+        return {"status": "error", "message": f"音乐点播失败: {e}"}
 
 if __name__ == "__main__":
     mcp.run(transport="stdio")
