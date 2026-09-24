@@ -244,7 +244,7 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
     
     # Get token from environment variable or command line arguments
-    endpoint_url = os.environ.get('MCP_ENDPOINT')
+    endpoint_url = os.environ.get('MCP_ENDPOINT')or "wss://api.xiaozhi.me/mcp/?token=eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEwODgxMDksImFnZW50SWQiOjI0MDI2NjksImVuZHBvaW50SWQiOiJhZ2VudF8yNDAyNjY5IiwicHVycG9zZSI6Im1jcC1lbmRwb2ludCIsImlhdCI6MTc5MDI1NTc4OSwiZXhwIjoxODIxODEzMzg5fQ.vkNaodqXhRaYc6XhfNhu_BiZv4mVC0D4rEBATge1w2SaKRfvwHMz-TPs_oNzknNhJZPe1M1OtJbonHGar1Wk_A"
     if not endpoint_url:
         logger.error("Please set the `MCP_ENDPOINT` environment variable")
         sys.exit(1)
